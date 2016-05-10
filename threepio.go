@@ -8,19 +8,35 @@ import (
     "flag"
     "log"
     "path"
+    "strings"
+    "net/url"
+    "gopkg.in/gcfg.v1"
 )
 
-var app string
+type Options struct {
+    Runtime struct {
+        Mountpoint string
+    }
+}
+
+var configFile string
+var options Options
+
 var uri string
+
+var app string
+var filePath string
+var mediaId string
+var mount string
 
 var Logger *log.Logger;
 
 func init(){
-    flag.StringVar(&app, "app", "prelude", "Application to execute")
-    flag.StringVar(&app, "a", "prelude", "Application to execute (shorthand)")
+    flag.StringVar(&configFile, "file", "/etc/threepio.ini", "ConfigFile file for threepio")
+    flag.StringVar(&configFile, "f", "/etc/threepio.ini", "ConfigFile file for threepio (Shorthand)")
 
-    flag.StringVar(&uri, "uri", "/some/path?id=12345", "Project URI; see docs")
-    flag.StringVar(&uri, "u", "/some/path?id=12345", "Project URI; see docs (shorthand)")
+    flag.StringVar(&uri, "uri", "threepio+prelude:///some/path?id=12345", "Project URI; see docs")
+    flag.StringVar(&uri, "u", "threepio+prelude:///some/path?id=12345", "Project URI; see docs (shorthand)")
 
     usr, err := user.Current()
     if err != nil {
@@ -33,8 +49,36 @@ func init(){
         log.Ldate|log.Ltime|log.Lshortfile)
 }
 
+func readOptions() string{
+    err := gcfg.ReadFileInto(&options, configFile)
+    if err != nil {
+        log.Fatalf("Failed to parse gcfg data: %s", err)
+    }
+
+    return options.Runtime.Mountpoint
+}
+
+func parseUri(uri string) (string, string, string) {
+    urlObj, err := url.Parse(uri)
+    if err != nil {
+        log.Fatal( err )
+    }
+
+    queryObj, err := url.ParseQuery(urlObj.RawQuery)
+    if err != nil {
+        log.Fatal( err )
+    }
+
+    schemeSplit := strings.Split(urlObj.Scheme, "+")
+    return schemeSplit[len(schemeSplit)-1], urlObj.Path, queryObj.Get("id")
+}
+
 func main(){
     flag.Parse()
-    Logger.Printf("Loading %s in %s\n", uri, app)
 
+    app, filePath, mediaId = parseUri(uri)
+    mount = readOptions()
+
+    fullPath := path.Join(mount, filePath)
+    Logger.Printf("Launching %s on path %s to edit project %s", app, fullPath, mediaId)
 }
