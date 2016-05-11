@@ -3,17 +3,17 @@
 package main
 
 import (
-    "io"
-    "os"
-    "os/user"
     "flag"
-    "log"
-    "path"
-    "strings"
-    "net/url"
-    "gopkg.in/gcfg.v1"
     "github.com/mitchellh/goamz/aws"
     "github.com/mitchellh/goamz/s3"
+    "gopkg.in/gcfg.v1"
+    "io"
+    "log"
+    "net/url"
+    "os"
+    "os/user"
+    "path"
+    "strings"
 )
 
 type Options struct {
@@ -25,8 +25,8 @@ type Options struct {
 
 var configFile string
 var options Options
-var s3Client *s3.S3
 var s3Bucket *s3.Bucket
+var s3Client *s3.S3
 
 var uri string
 
