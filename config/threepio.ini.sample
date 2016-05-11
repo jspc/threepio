@@ -1,2 +1,3 @@
 [runtime]
 mountpoint = /Volumes/tbox/projects
+bucket = mio-raw-assets ; bucket to pull from
