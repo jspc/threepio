@@ -23,6 +23,18 @@ type Options struct {
     }
 }
 
+type AppContext struct {
+    Application string
+    Path string
+    Id string
+    AWS struct {
+        AccessKey string
+        SecretKey string
+        Token string
+    }
+}
+
+var appContext AppContext
 var configFile string
 var options Options
 var s3Bucket *s3.Bucket
@@ -51,13 +63,6 @@ func init(){
         log.Fatal( err )
     }
 
-    auth, err := aws.EnvAuth()
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    s3Client = s3.New(auth, aws.EUWest)
-
     file, _ := os.OpenFile(path.Join(usr.HomeDir, ".threepio.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
     Logger = log.New(file,
         "INFO: ",
@@ -73,7 +78,7 @@ func readOptions() (string, string){
     return options.Runtime.Mountpoint, options.Runtime.Bucket
 }
 
-func parseUri(uri string) (string, string, string) {
+func parseUri(uri string) {
     urlObj, err := url.Parse(uri)
     if err != nil {
         log.Fatal( err )
@@ -85,7 +90,14 @@ func parseUri(uri string) (string, string, string) {
     }
 
     schemeSplit := strings.Split(urlObj.Scheme, "+")
-    return schemeSplit[len(schemeSplit)-1], urlObj.Path, queryObj.Get("id")
+
+    appContext.Application = schemeSplit[len(schemeSplit)-1]
+    appContext.Path = urlObj.Path
+    appContext.Id = queryObj.Get("id")
+
+    appContext.AWS.AccessKey = queryObj.Get("accessKey")
+    appContext.AWS.SecretKey = queryObj.Get("secretKey")
+    appContext.AWS.Token = queryObj.Get("sessionToken")
 }
 
 func createDirIfMissing(){
@@ -96,14 +108,15 @@ func createDirIfMissing(){
 }
 
 func syncAssets(){
-    auth, err := aws.EnvAuth()
-    if err != nil {
-        Logger.Fatal(err)
-    }
+    var auth aws.Auth
+    auth.AccessKey = appContext.AWS.AccessKey
+    auth.SecretKey = appContext.AWS.SecretKey
+    auth.Token = appContext.AWS.Token
+
     s3Client = s3.New(auth, aws.EUWest)
     s3Bucket = s3Client.Bucket(bucketName)
 
-    prefix := mediaId + "/"
+    prefix := appContext.Id + "/"
     resp, err := s3Bucket.List(prefix, "/", "", 1000)
 
     if err != nil {
@@ -142,14 +155,15 @@ func launch(){
 func main(){
     flag.Parse()
 
-    app, filePath, mediaId = parseUri(uri)
+    parseUri(uri)
     mount, bucketName = readOptions()
 
     fullPath = path.Join(mount, filePath)
-    Logger.Printf("Launching %s on path %s to edit project %s with assets from %s", app, fullPath, mediaId, bucketName)
+    Logger.Printf("Launching %s on path %s to edit project %s with assets from %s",
+        appContext.Application, fullPath, appContext.Id, bucketName)
 
     // Lets go to work
     createDirIfMissing()
     syncAssets()
-
+    launch()
 }
