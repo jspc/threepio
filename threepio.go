@@ -14,6 +14,9 @@ import (
     "os/user"
     "path"
     "strings"
+
+    "syscall"
+    "os/exec"
 )
 
 type Options struct {
@@ -150,6 +153,19 @@ func syncAssets(){
 }
 
 func launch(){
+    binary, lookErr := exec.LookPath("open")
+    if lookErr != nil {
+        panic(lookErr)
+    }
+
+    args := []string{"open", path.Join(fullPath, "my_project.plproj")}
+
+    env := os.Environ()
+
+    execErr := syscall.Exec(binary, args, env)
+    if execErr != nil {
+        Logger.Fatal(execErr)
+    }
 }
 
 func main(){
