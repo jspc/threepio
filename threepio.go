@@ -29,7 +29,7 @@ type Options struct {
 type AppContext struct {
     Application string
     Path string
-    Id string
+    Uuid string
     AWS struct {
         AccessKey string
         SecretKey string
@@ -96,7 +96,7 @@ func parseUri(uri string) {
 
     appContext.Application = schemeSplit[len(schemeSplit)-1]
     appContext.Path = urlObj.Path
-    appContext.Id = queryObj.Get("id")
+    appContext.Uuid = queryObj.Get("uuid")
 
     appContext.AWS.AccessKey = queryObj.Get("accessKey")
     appContext.AWS.SecretKey = queryObj.Get("secretKey")
@@ -119,7 +119,7 @@ func syncAssets(){
     s3Client = s3.New(auth, aws.EUWest)
     s3Bucket = s3Client.Bucket(bucketName)
 
-    prefix := appContext.Id + "/"
+    prefix := appContext.Uuid + "/"
     resp, err := s3Bucket.List(prefix, "/", "", 1000)
 
     if err != nil {
@@ -176,7 +176,7 @@ func main(){
 
     fullPath = path.Join(mount, filePath)
     Logger.Printf("Launching %s on path %s to edit project %s with assets from %s",
-        appContext.Application, fullPath, appContext.Id, bucketName)
+        appContext.Application, fullPath, appContext.Uuid, bucketName)
 
     // Lets go to work
     createDirIfMissing()
