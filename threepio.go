@@ -4,6 +4,7 @@ package main
 
 import (
     "flag"
+    "fmt"
     "github.com/mitchellh/goamz/aws"
     "github.com/mitchellh/goamz/s3"
     "gopkg.in/gcfg.v1"
@@ -14,6 +15,9 @@ import (
     "os/user"
     "path"
     "strings"
+
+    "syscall"
+    "os/exec"
 )
 
 type Options struct {
@@ -25,8 +29,9 @@ type Options struct {
 
 type AppContext struct {
     Application string
-    Path string
-    Id string
+    File string
+    Project string
+    Uuid string
     AWS struct {
         AccessKey string
         SecretKey string
@@ -41,6 +46,7 @@ var s3Bucket *s3.Bucket
 var s3Client *s3.S3
 
 var uri string
+var suffix string
 
 var app string
 var bucketName string
@@ -92,8 +98,8 @@ func parseUri(uri string) {
     schemeSplit := strings.Split(urlObj.Scheme, "+")
 
     appContext.Application = schemeSplit[len(schemeSplit)-1]
-    appContext.Path = urlObj.Path
-    appContext.Id = queryObj.Get("id")
+    appContext.Project = mutate(urlObj.Path)
+    appContext.Uuid = queryObj.Get("uuid")
 
     appContext.AWS.AccessKey = queryObj.Get("accessKey")
     appContext.AWS.SecretKey = queryObj.Get("secretKey")
@@ -116,7 +122,7 @@ func syncAssets(){
     s3Client = s3.New(auth, aws.EUWest)
     s3Bucket = s3Client.Bucket(bucketName)
 
-    prefix := appContext.Id + "/"
+    prefix := appContext.Uuid + "/"
     resp, err := s3Bucket.List(prefix, "/", "", 1000)
 
     if err != nil {
@@ -150,17 +156,52 @@ func syncAssets(){
 }
 
 func launch(){
+    binary, lookErr := exec.LookPath("open")
+    if lookErr != nil {
+        Logger.Fatal(lookErr)
+    }
+
+    args := []string{"open", path.Join(fullPath, appContext.File)}
+
+    env := os.Environ()
+
+    execErr := syscall.Exec(binary, args, env)
+    if execErr != nil {
+        Logger.Fatal(execErr)
+    }
+}
+
+func mutate(s string) (s_mux string) {
+    var s_mux string
+
+    s_mux = strings.Replace(s, "/", "", 1)
+    s_mux = strings.Replace(s_mux, " ", "_", -1)
+
+    return
+}
+
+func inferFilename() {
+    switch appContext.Application {
+    case "prelude": suffix = "plproj"
+    case "premiere": suffix = "prproj"
+    }
+
+    appContext.File = fmt.Sprintf("%s.%s", appContext.Project, suffix)
 }
 
 func main(){
     flag.Parse()
 
     parseUri(uri)
+    inferFilename()
+
     mount, bucketName = readOptions()
 
+    filePath = appContext.Project
+
     fullPath = path.Join(mount, filePath)
-    Logger.Printf("Launching %s on path %s to edit project %s with assets from %s",
-        appContext.Application, fullPath, appContext.Id, bucketName)
+    Logger.Printf("Launching %s on path %s to edit %s with assets from %s/%s",
+        appContext.Application, fullPath, appContext.File , bucketName, appContext.Uuid)
 
     // Lets go to work
     createDirIfMissing()
