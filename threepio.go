@@ -172,8 +172,6 @@ func launch(){
 }
 
 func mutate(s string) (s_mux string) {
-    var s_mux string
-
     s_mux = strings.Replace(s, "/", "", 1)
     s_mux = strings.Replace(s_mux, " ", "_", -1)
 
@@ -197,7 +195,7 @@ func main(){
 
     mount, bucketName = readOptions()
 
-    filePath = appContext.Project
+    filePath = appContext.Uuid
 
     fullPath = path.Join(mount, filePath)
     Logger.Printf("Launching %s on path %s to edit %s with assets from %s/%s",
