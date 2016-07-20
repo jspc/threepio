@@ -23,3 +23,16 @@ value           = alphanumeric;
 
 alphanumeric    = letter | digit, {alphanumeric | punctuation};
 ```
+
+Building
+--
+
+To test/ run the threepio binary:
+
+```bash
+$ go build threepio.go
+```
+
+To build the actual `.dmg` installer, and register the protocol handler, the procedure is a bit more involved.
+
+Ultimately you'll need to follow [this blog post](http://ramezanpour.net/post/2014/05/12/how-to-create-installation-dmg-files-in-os-x/)
